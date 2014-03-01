@@ -74,12 +74,12 @@ def int_to_words(num, words):
 def date_to_words(date):
     #M/D format
     if "/" in date :
-        return date
+        return [date]
     else:
         date = int(date)
         #error checking for a date of 0
         if date == 0 :
-            return date
+            return ['zero']
         #error checking for date > 31
         if date > 31 :
             return int_to_words(date)
@@ -88,6 +88,8 @@ def date_to_words(date):
         elif (date % 10) == 0 :
             tens_digit = date // 10
             return [CONST_TIES[tens_digit - 2][:-1] + "ieth"]
+        elif date < 10 :
+            return [CONST_ORDINALS[date - 1]]
         else:
             tens_digit = date // 10
             ones_digit = date % 10
