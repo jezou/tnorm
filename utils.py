@@ -2,11 +2,23 @@
 #Jefferson Zou
 
 #some useful lists
+CONST_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 CONST_MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
-CONST_ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth']
+CONST_ORDINALS = ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth']
 CONST_TEENS = ['ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen']
 CONST_DIGITS = ['one','two','three','four','five','six','seven','eight','nine']
 CONST_TIES = ['twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety']
+CONST_ABBREV =  { 'mrs': ['missus'], 'ms': ['miss'], 'mr': ['mister'],
+                'am': ['ay', 'em'], 'pm': ['pee', 'em'],
+                'etc': ['et', 'cetera'],
+                'ave': ['avenue'], 'blvd': ['boulevard'],
+                'adj': ['adjective'], 'adjs': ['adjectives'],
+                'mon': ['monday'], 'tues': ['tuesday'], 'wed': ['wednesday'],
+                'thu': ['thursday'], 'fri': ['friday'], 'sat': ['saturday'], 'sun': ['sunday'],
+                'jan': ['january'], 'feb': ['february'], 'mar': ['march'],
+                'apr': ['april'], 'aug': ['august'], 'sept': ['september'],
+                'nov': ['november'], 'dec': ['december']}
+
 #converts integers to how they are spoken (assumes num is an integer)                                                                          
 #i.e. 42 => forty two                                                                                                 
 #*this doesn't encompass how numbers are spoken in all contexts
@@ -70,12 +82,10 @@ def int_to_words(num, words):
 
 #end of function
 
-#converts a date (i.e. the 31 in "March 31" or 3/4) to spoken words, not compatible with years
+#converts a date (i.e. the 31 in "March 31" to thirty first or 3/4 to march 4th) to spoken words
 def date_to_words(date):
-    #M/D format
-    if "/" in date :
-        return [date]
-    else:
+    #converts purely numerical date (i.e. March 31)
+    if isint(date) :
         date = int(date)
         if date >= 10 and date < 20 :
             if date == 12 :
@@ -86,18 +96,39 @@ def date_to_words(date):
             tens_digit = date // 10
             return [CONST_TIES[tens_digit - 2][:-1] + "ieth"]
         elif date < 10 :
-            return [CONST_ORDINALS[date - 1]]
+            return [CONST_ORDINALS[date]]
         else:
             tens_digit = date // 10
             ones_digit = date % 10
-            return [CONST_TIES[tens_digit - 2], CONST_ORDINALS[ones_digit - 1]]
+            return [CONST_TIES[tens_digit - 2], CONST_ORDINALS[ones_digit]]
+    elif "/" in date :
+        first_slash = date.find('/')
+        month = date[:first_slash]
+        rest = date[first_slash + 1:]
+        second_slash = rest.find('/')
+        #this is a date of just M/D
+        if second_slash == -1 :
+            day = rest
+            return [CONST_MONTHS[int(month) - 1]] + date_to_words(day)
+        #this is a date of M/D/Y
+        else:
+            day = rest[:second_slash]
+            year = rest[second_slash + 1:]
+            return [CONST_MONTHS[int(month) - 1]] + date_to_words(day) + year_to_words(year)
 
 #end of function
 
 #transforms year into spoken words
-#assumes 999 < year < 10000
+#assumes 999 < year < 10000, but does convert numbers like
+#95 to ninteen ninety five and 14 to twenty fourteen
 def year_to_words(year):
     year = int(year)
+
+    if year < 100 :
+        if year < 50 :
+            return year_to_words(str(2000 + year))
+        else:
+            return year_to_words(str(1900 + year))
 
     if year % 1000 == 0 :
         return int_to_words(str(year), [])
@@ -167,22 +198,14 @@ def num_to_words(num):
 def abbreviation_to_words(abbr):
     abbr = abbr.lower()
     #abbreviations that are pronounced as series of letters
-    as_letters = ['dvd', 'un', 'pc', 'ibm', 'am', 'pm']
+    as_letters = ['dvd', 'un', 'pc', 'ibm', 'am', 'pm', 'bc', 'ad', 'us']
     #abbreviations spoken as an actual word (shown for example)
     as_word = ['nasa', 'ikea', 'unicef']
-    expand = { 'mrs': ['missus'], 'ms': ['miss'], 'mr': ['mister'],
-                'am': ['ay', 'em'], 'pm': ['pee', 'em'],
-                'etc': ['et', 'cetera'],
-                'adj.': ['adjective'], 'adjs.': ['adjectives'],
-                'jan': ['january'], 'feb': ['february'], 'mar': ['march'],
-                'apr': ['april'], 'aug': ['august'], 'sept': ['september'],
-                'nov': ['november'], 'dec': ['december']}
-    if "." in abbr :
-        abbr = abbr.replace(".", "")
-        print(abbr)
-        if abbr in expand.keys() :
-            return expand[abbr]
-        else:
+
+    abbr = abbr.replace(".", "")
+    if abbr in CONST_ABBREV.keys() :
+        return CONST_ABBREV[abbr]
+    else:
             return [abbr]
     if abbr in as_letters :
         return list(abbr)
@@ -206,6 +229,52 @@ def time_to_words(time):
             return int_to_words(first_pair, []) + int_to_words(second_pair, [])
     else:
         return [time]
+
+#end of function
+
+#converts ordinal (i.e. 1st, 31st, 82nd, etc.) to spoken words
+def ordinals_to_words(ordinal):
+    num = ordinal.replace("th", "").replace("rd", "").replace("st", "").replace("nd", "")
+    if isint(num) :
+        num = int(num)
+        copy = num
+        if num == 0 :
+            return [CONST_ORDINALS[0]]
+        place = 1;
+        while(copy > 0):
+            digit = copy % 10
+            if place == 1 :
+                if digit != 0 :
+                    left_part = num // 10
+                    tens = 10 ** place
+                    if left_part > 0 :
+                        return int_to_words(str((num // tens) * tens), []) + [CONST_ORDINALS[digit]]
+                    else:
+                        return [CONST_ORDINALS[digit]]
+            else:
+                if digit != 0 :
+                    words = int_to_words(str(num), [])
+                    words[-1] = words[-1] + "th"
+                    return words
+            place = place + 1
+            copy = copy // 10
+    else:
+        return [ordinal]
+
+#end of function
+
+#converts fractions to spoken words (i.e. 2/3 to two thirds)
+def fraction_to_words(fraction):
+    slash = fraction.index('/')
+    numerator = fraction[:slash]
+    denominator = fraction[slash + 1:]
+    numerator = int_to_words(numerator, [])
+    if int(denominator) == 2 :
+        denominator = ["halves"]
+    else:
+        denominator = ordinals_to_words(denominator)
+        denominator[-1] = denominator[-1] + "s"
+    return numerator + denominator
 
 #end of function
 
@@ -260,12 +329,55 @@ def convertNSW(words, index):
                 return numpart + [next_word, "dollars"]
         else:
             return numpart + ["dollars"]
+    #checks if we have an ordinal
+    elif raw_word[-2:] in ["st", "nd", "rd", "th"] and isint(raw_word[:-2]) :
+        return ordinals_to_words(raw_word)
     #if the word has a dot at the end, check if it's an abbreviation
     elif "." in raw_word :
         return abbreviation_to_words(raw_word)
     #if the word has a colon in the middle, check if it's referring to time
     elif ":" in raw_word :
         return time_to_words(raw_word)
+    elif raw_word in CONST_ABBREV.keys() :
+        return abbreviation_to_words(raw_word)
+    #normalize fractions and dates in M/D format and M/D/Y format
+    elif "/" in raw_word :
+        slash = raw_word.index('/')
+        if isint(raw_word[:slash]) :
+            #checking if we're dealing with a date
+            rest = raw_word[slash + 1:]
+            second_slash = rest.find('/')
+            month = raw_word[:slash]
+            day = raw_word[slash + 1:]
+            if int(month) in range(1, 13) :
+                #checks for M/D/Y
+                if second_slash != -1:
+                    day = rest[:second_slash]
+                    year = rest[second_slash + 1:]
+                    if isint(day) and int(day) <= 31 and isint(year) and int(year) < 10000 :
+                        return date_to_words(raw_word)
+                    else:
+                        return [raw_word]
+
+                if isint(day) :
+                    if int(day) in range(1, 32) :
+                        #checks for M/D
+                        if index > 0 :
+                            prev_word = words[index - 1].lower()
+                            if prev_word in (["on"] + CONST_DAYS) :
+                                return date_to_words(raw_word)
+                        if index < len(words) - 1 :
+                            next_word = words[index + 1].lower()
+                            if next_word in (["of"] + CONST_DAYS) :
+                                return date_to_words(raw_word)
+                    else:
+                        return fraction_to_words(raw_word)
+
+            #if it's not a date, treat it as a fraction
+            return fraction_to_words(raw_word)
+
+        else:
+            return [raw_word]
     else:
         return [raw_word]
 
@@ -299,6 +411,13 @@ def choose(words, index):
                             print(options[1])
                             continue
                     print(options[0])
+                #I prefer the second pronounciation of the days of the week, options[0] is mon-di, options[1] is mon-day
+                elif word in CONST_DAYS :
+                    #except for thursday, for which options[0] and [1] are reversed
+                    if word == 'thursday' :
+                        print(options[0])
+                    else: 
+                        print(options[1])
                 else:
                     print(options[0])
         except KeyError:
