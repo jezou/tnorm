@@ -6,7 +6,7 @@ CONST_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 CONST_MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
 CONST_ORDINALS = ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth']
 CONST_TEENS = ['ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen']
-CONST_DIGITS = ['one','two','three','four','five','six','seven','eight','nine']
+CONST_DIGITS = ['zero', 'one','two','three','four','five','six','seven','eight','nine']
 CONST_TIES = ['twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety']
 CONST_ABBREV =  { 'mrs': ['missus'], 'ms': ['miss'], 'mr': ['mister'],
                 'am': ['ay', 'em'], 'pm': ['pee', 'em'],
@@ -31,7 +31,7 @@ def int_to_words(num, words):
         return words
     if num < 10 :
         if num != 0 :
-            words.append(CONST_DIGITS[num - 1])
+            words.append(CONST_DIGITS[num])
         return words
     if num < 20 and num >= 10 :
         words.append(CONST_TEENS[num - 10])
@@ -43,7 +43,7 @@ def int_to_words(num, words):
         pre = -1
 
         if place not in[2, 5, 6, 8, 9, 11, 12]:
-            words.append(CONST_DIGITS[digit - 1])
+            words.append(CONST_DIGITS[digit])
 
         #deals with "ties", i.e. twenty, thirty, etc.
         if place == 2 :
@@ -163,7 +163,7 @@ def digits_to_words(num):
     digits = []
     for d in list(num) :
         digit = int(d)
-        digits.append(CONST_DIGITS[digit - 1])
+        digits.append(CONST_DIGITS[digit])
     return digits
 
 #converts a float (assumed to have a decimal portion)
@@ -171,6 +171,7 @@ def float_to_words(num):
     dec_point = num.index('.')
     intpart = num[:dec_point]
     decpart = num[dec_point + 1 :]
+    decpart.replace(".", "")
     return int_to_words(intpart, []) + ["point"] + digits_to_words(decpart)
 
 #return True if num is a float, False if not
@@ -196,21 +197,19 @@ def num_to_words(num):
 
 #converts abbreviation to how it is spoken
 def abbreviation_to_words(abbr):
-    abbr = abbr.lower()
+    labbr = abbr.lower()
     #abbreviations that are pronounced as series of letters
     as_letters = ['dvd', 'un', 'pc', 'ibm', 'am', 'pm', 'bc', 'ad', 'us']
     #abbreviations spoken as an actual word (shown for example)
     as_word = ['nasa', 'ikea', 'unicef']
 
-    abbr = abbr.replace(".", "")
-    if abbr in CONST_ABBREV.keys() :
-        return CONST_ABBREV[abbr]
-    else:
-            return [abbr]
-    if abbr in as_letters :
-        return list(abbr)
-        return [abbr]
-    return [abbr]
+    labbr = labbr.replace(".", "")
+    if labbr in CONST_ABBREV.keys() :
+        return CONST_ABBREV[labbr]
+    if labbr in as_letters and abbr.isupper():
+        return list(labbr)
+
+    return [labbr]
 
 #end of function
 
@@ -284,21 +283,32 @@ def convertNSW(words, index):
     raw_word = words[index]
 
     #checks for and removes commas
-    if "," in raw_word :
-        has_comma = True
+    #has_commma refers to having a comma in the middle, as in a number
+    if "," in raw_word:
+        if raw_word[-1] != ',' :
+            has_comma = True
+        else:
+            has_comma = False
         raw_word = raw_word.replace(",", "")
     else:
         has_comma = False
 
+    #checks for and removes periods
+    with_period = raw_word[:]
+    raw_word = raw_word.replace(".", "")
     #if a word is in all caps, treat it as an abbreviation
-    if raw_word.isupper() :
+    #except if the length is 1, because it's probably a letter
+    if raw_word.isupper() and len(raw_word) > 1:
         return abbreviation_to_words(raw_word)
     
     #convert to lowercase
     raw_word = raw_word.lower()
 
+    #normalizes floats (i.e. 34.5)
+    if isfloat(with_period) and (not isint(with_period) or raw_word[-1] == '0') :
+        return float_to_words(with_period)
     #normalizes integers, checking to see if a number is date or year
-    if isint(raw_word) :
+    elif isint(raw_word) :
         num = int(raw_word) 
         #checks if num is referring to a date
         if not has_comma and num <= 31 and num > 0 :
@@ -315,9 +325,6 @@ def convertNSW(words, index):
         elif not has_comma and num > 1500 and num < 2100 :
             return year_to_words(raw_word)
         return int_to_words(raw_word, [])
-    #normalizes floats (i.e. 34.5)
-    elif isfloat(raw_word) :
-        return float_to_words(raw_word)
     #changes $ format to "dollars"
     elif raw_word[0] == "$" :
         num = raw_word[1:]
@@ -327,14 +334,13 @@ def convertNSW(words, index):
             if next_word in ['hundred', 'thousand', 'million', 'billion', 'trillion'] :
                 words.pop(index + 1)
                 return numpart + [next_word, "dollars"]
+            else: 
+                return numpart + ["dollars"]
         else:
             return numpart + ["dollars"]
     #checks if we have an ordinal
     elif raw_word[-2:] in ["st", "nd", "rd", "th"] and isint(raw_word[:-2]) :
         return ordinals_to_words(raw_word)
-    #if the word has a dot at the end, check if it's an abbreviation
-    elif "." in raw_word :
-        return abbreviation_to_words(raw_word)
     #if the word has a colon in the middle, check if it's referring to time
     elif ":" in raw_word :
         return time_to_words(raw_word)
@@ -368,16 +374,18 @@ def convertNSW(words, index):
                                 return date_to_words(raw_word)
                         if index < len(words) - 1 :
                             next_word = words[index + 1].lower()
-                            if next_word in (["of"] + CONST_DAYS) :
+                            if next_word in CONST_DAYS :
                                 return date_to_words(raw_word)
                     else:
                         return fraction_to_words(raw_word)
 
             #if it's not a date, treat it as a fraction
             return fraction_to_words(raw_word)
-
         else:
             return [raw_word]
+    #if the word has a dot at the end, check if it's an abbreviation
+    elif with_period[-1] == "." and len(with_period) in [3, 4]:
+        return abbreviation_to_words(with_period)
     else:
         return [raw_word]
 
@@ -390,7 +398,7 @@ D = cmudict.dict()
 def choose(words, index):
     #normalizes non-standard words
     standardwords = convertNSW(words, index)
-    for i, word in enumerate(standardwords) :
+    for word in standardwords :
         #tries to get pronounciation, returns "<>" if one isn't found
         try:
             options = D[word]
@@ -401,12 +409,12 @@ def choose(words, index):
                 #chooses whether "a" is being used as an article - ['AH0'] (options[0]) - or a letter - ['EY1'] (options[1])
                 if word == "a" :
                     if index > 0 :
-                        prev_word = standardwords[i - 1]
+                        prev_word = words[index - 1].lower()
                         if prev_word in ["the", "an"] :
                             print(options[1])
                             continue
-                    if index < len(standardwords) - 1 :
-                        next_word = standardwords[i + 1]
+                    if index < len(words) - 1 :
+                        next_word = words[index + 1].lower()
                         if next_word in ["to", "is", "isn't"] :
                             print(options[1])
                             continue

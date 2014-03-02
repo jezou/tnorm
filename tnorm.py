@@ -11,10 +11,14 @@ line = "initial"
 while(True):
 
     #reads in input line from user
-    line = raw_input()
+    try:
+        line = raw_input()
+    except EOFError:
+        print("EOF Reached - Programming terminating")
+        break
     
     #checks for empty line
-    if not line :
+    if not line or len(line) == 0:
         print("Program terminating")
         break
     else:
