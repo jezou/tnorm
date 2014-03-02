@@ -22,7 +22,7 @@ def int_to_words(num, words):
             words.append(CONST_DIGITS[num - 1])
         return words
     if num < 20 and num >= 10 :
-        words.append(teens[num - 10])
+        words.append(CONST_TEENS[num - 10])
         return words
     else:
         place = len(str(num))
@@ -70,20 +70,14 @@ def int_to_words(num, words):
 
 #end of function
 
-#converts a date (i.e. the 31 in "March 31" or 3/4) to words, not compatible with years
+#converts a date (i.e. the 31 in "March 31" or 3/4) to spoken words, not compatible with years
 def date_to_words(date):
     #M/D format
     if "/" in date :
         return [date]
     else:
         date = int(date)
-        #error checking for a date of 0
-        if date == 0 :
-            return ['zero']
-        #error checking for date > 31
-        if date > 31 :
-            return int_to_words(date)
-        elif date >= 10 and date < 20 :
+        if date >= 10 and date < 20 :
             return [CONST_TEENS[date - 10] + "th"]
         elif (date % 10) == 0 :
             tens_digit = date // 10
@@ -94,6 +88,43 @@ def date_to_words(date):
             tens_digit = date // 10
             ones_digit = date % 10
             return [CONST_TIES[tens_digit - 2], CONST_ORDINALS[ones_digit - 1]]
+
+#end of function
+
+#converts abbreviation to how it is spoken
+def abbreviation_to_words(abbr):
+    abbr = abbr.lower()
+    #abbreviations that are pronounced as series of letters
+    as_letters = ['dvd', 'un', 'pc', 'ibm']
+    #abbreviations spoken as an actual word (shown for example)
+    as_word = ['nasa', 'ikea', 'unicef']
+    if abbr in as_letters :
+        return [abbr]
+    else:
+        return [abbr]
+
+#end of function
+
+#transforms year into spoken words
+#assumes 999 < year < 10000
+def year_to_words(year):
+    year = int(year)
+
+    if year % 1000 == 0
+        return int_to_words(str(year))
+        
+    #used paired format (i.e. 1750 => seventeen fifty)
+    #except in cases like 2006 
+    #accounts for the addition of "oh" in years like 1906
+    first_pair = year // 100
+    second_pair = year % 100
+    if second_pair < 10 :
+        if first_pair % 10 != 0 :
+            return int_to_words(str(first_pair), []) + ["oh"] + int_to_words(str(second_pair), [])
+        else: 
+            return int_to_words(str(first_pair * 100), []) + int_to_words(str(second_pair), [])
+    else:
+        return int_to_words(str(first_pair), []) + int_to_words(str(second_pair), [])
 
 #end of function
 
@@ -119,17 +150,29 @@ def convertNSW(words, index):
     else:
         has_comma = False
 
+    #if a word is in all caps, treat it as an abbreviation
+    if raw_word.isupper() :
+        return abbreviation_to_words(raw_word)
+    else:
+        raw_word = raw_word.lower()
+
     #normalizes integers, checking to see if a number is date or year
     if isint(raw_word) :
-        if index > 0 :
-            prev_word = words[index - 1]
-            if prev_word in CONST_MONTHS :
-                return date_to_words(raw_word)
-        if index < len(words) - 2 :
-            next_word = words[index + 1]
-            nextN_word = words[index + 2]
-            if next_word == "of" and nextN_word in CONST_MONTHS :
-                return date_to_words(raw_word)
+        num = int(raw_word) 
+        #checks if num is referring to a date
+        if num <= 31 and num > 0 :
+            if index > 0 :
+                prev_word = words[index - 1]
+                if prev_word in CONST_MONTHS :
+                    return date_to_words(raw_word)
+            if index < len(words) - 2 :
+                next_word = words[index + 1]
+                nextN_word = words[index + 2]
+                if next_word == "of" and nextN_word in CONST_MONTHS :
+                    return date_to_words(raw_word)
+        #checks if num is referring to a year
+        elif num > 1500 and num < 2100 :
+            return year_to_words(raw_word)
         return int_to_words(raw_word, [])
     #changes $ format to "dollars"
     elif raw_word[0] == "$" :
@@ -139,7 +182,7 @@ def convertNSW(words, index):
         if index < len(words) - 1 :
             next_word = words[index + 1]
             if next_word in ['hundred', 'thousand', 'million', 'billion', 'trillion'] :
-                standardwords.pop(index + 1)
+                words.pop(index + 1)
                 return intpart + [next_word, "dollars"]
         else:
             return intpart + ["dollars"]

@@ -18,8 +18,6 @@ while(True):
         print("Program terminating")
         break
     else:
-        #CMU only accepts lowercase
-        line = line.lower()
         #tokenize by spaces
         words = line.split(" ")
         #loops through all "words" in words
