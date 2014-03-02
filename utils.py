@@ -78,7 +78,10 @@ def date_to_words(date):
     else:
         date = int(date)
         if date >= 10 and date < 20 :
-            return [CONST_TEENS[date - 10] + "th"]
+            if date == 12 :
+                return ['twelfth']
+            else:
+                return [CONST_TEENS[date - 10] + "th"]
         elif (date % 10) == 0 :
             tens_digit = date // 10
             return [CONST_TIES[tens_digit - 2][:-1] + "ieth"]
@@ -91,28 +94,14 @@ def date_to_words(date):
 
 #end of function
 
-#converts abbreviation to how it is spoken
-def abbreviation_to_words(abbr):
-    abbr = abbr.lower()
-    #abbreviations that are pronounced as series of letters
-    as_letters = ['dvd', 'un', 'pc', 'ibm']
-    #abbreviations spoken as an actual word (shown for example)
-    as_word = ['nasa', 'ikea', 'unicef']
-    if abbr in as_letters :
-        return [abbr]
-    else:
-        return [abbr]
-
-#end of function
-
 #transforms year into spoken words
 #assumes 999 < year < 10000
 def year_to_words(year):
     year = int(year)
 
-    if year % 1000 == 0
-        return int_to_words(str(year))
-        
+    if year % 1000 == 0 :
+        return int_to_words(str(year), [])
+
     #used paired format (i.e. 1750 => seventeen fifty)
     #except in cases like 2006 
     #accounts for the addition of "oh" in years like 1906
@@ -138,6 +127,88 @@ def isint(num):
 
 #end of function
 
+#converst number to series of spoken digits
+def digits_to_words(num):
+    digits = []
+    for d in list(num) :
+        digit = int(d)
+        digits.append(CONST_DIGITS[digit - 1])
+    return digits
+
+#converts a float (assumed to have a decimal portion)
+def float_to_words(num):
+    dec_point = num.index('.')
+    intpart = num[:dec_point]
+    decpart = num[dec_point + 1 :]
+    return int_to_words(intpart, []) + ["point"] + digits_to_words(decpart)
+
+#return True if num is a float, False if not
+def isfloat(num):
+    try:
+        floatnum = float(num)
+        return True
+    except ValueError:
+        return False
+
+#end of function
+
+#converts num to spoken words using int_to_words and float_to_words
+def num_to_words(num):
+    if isint(num) :
+        return int_to_words(num, [])
+    elif isfloat(num) :
+        return float_to_words(num)
+    else:
+        return [num]
+
+#end of function
+
+#converts abbreviation to how it is spoken
+def abbreviation_to_words(abbr):
+    abbr = abbr.lower()
+    #abbreviations that are pronounced as series of letters
+    as_letters = ['dvd', 'un', 'pc', 'ibm', 'am', 'pm']
+    #abbreviations spoken as an actual word (shown for example)
+    as_word = ['nasa', 'ikea', 'unicef']
+    expand = { 'mrs': ['missus'], 'ms': ['miss'], 'mr': ['mister'],
+                'am': ['ay', 'em'], 'pm': ['pee', 'em'],
+                'etc': ['et', 'cetera'],
+                'adj.': ['adjective'], 'adjs.': ['adjectives'],
+                'jan': ['january'], 'feb': ['february'], 'mar': ['march'],
+                'apr': ['april'], 'aug': ['august'], 'sept': ['september'],
+                'nov': ['november'], 'dec': ['december']}
+    if "." in abbr :
+        abbr = abbr.replace(".", "")
+        print(abbr)
+        if abbr in expand.keys() :
+            return expand[abbr]
+        else:
+            return [abbr]
+    if abbr in as_letters :
+        return list(abbr)
+        return [abbr]
+    return [abbr]
+
+#end of function
+
+#converts time in format HH:MM to spoken words, i.e. 11:45 to eleven forty five
+def time_to_words(time):
+    first_pair = time[:-3]
+    second_pair = time[-2:]
+    if isint(first_pair) and isint(second_pair) :
+        sp_int = int(second_pair)
+        if sp_int < 10 :
+            if sp_int == 0 :
+                return int_to_words(first_pair, []) + ["o'clock"]
+            else:
+                return int_to_words(first_pair, []) + ['oh'] + int_to_words(second_pair, [])
+        else:
+            return int_to_words(first_pair, []) + int_to_words(second_pair, [])
+    else:
+        return [time]
+
+#end of function
+
 #normalizes non-standard words
 def convertNSW(words, index):
 
@@ -153,39 +224,48 @@ def convertNSW(words, index):
     #if a word is in all caps, treat it as an abbreviation
     if raw_word.isupper() :
         return abbreviation_to_words(raw_word)
-    else:
-        raw_word = raw_word.lower()
+    
+    #convert to lowercase
+    raw_word = raw_word.lower()
 
     #normalizes integers, checking to see if a number is date or year
     if isint(raw_word) :
         num = int(raw_word) 
         #checks if num is referring to a date
-        if num <= 31 and num > 0 :
+        if not has_comma and num <= 31 and num > 0 :
             if index > 0 :
-                prev_word = words[index - 1]
+                prev_word = words[index - 1].lower()
                 if prev_word in CONST_MONTHS :
                     return date_to_words(raw_word)
             if index < len(words) - 2 :
-                next_word = words[index + 1]
-                nextN_word = words[index + 2]
+                next_word = words[index + 1].lower()
+                nextN_word = words[index + 2].lower()
                 if next_word == "of" and nextN_word in CONST_MONTHS :
                     return date_to_words(raw_word)
         #checks if num is referring to a year
-        elif num > 1500 and num < 2100 :
+        elif not has_comma and num > 1500 and num < 2100 :
             return year_to_words(raw_word)
         return int_to_words(raw_word, [])
+    #normalizes floats (i.e. 34.5)
+    elif isfloat(raw_word) :
+        return float_to_words(raw_word)
     #changes $ format to "dollars"
     elif raw_word[0] == "$" :
         num = raw_word[1:]
-        print(num)
-        intpart = int_to_words(num, [])
+        numpart = num_to_words(num)
         if index < len(words) - 1 :
-            next_word = words[index + 1]
+            next_word = words[index + 1].lower()
             if next_word in ['hundred', 'thousand', 'million', 'billion', 'trillion'] :
                 words.pop(index + 1)
-                return intpart + [next_word, "dollars"]
+                return numpart + [next_word, "dollars"]
         else:
-            return intpart + ["dollars"]
+            return numpart + ["dollars"]
+    #if the word has a dot at the end, check if it's an abbreviation
+    elif "." in raw_word :
+        return abbreviation_to_words(raw_word)
+    #if the word has a colon in the middle, check if it's referring to time
+    elif ":" in raw_word :
+        return time_to_words(raw_word)
     else:
         return [raw_word]
 
